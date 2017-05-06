@@ -11,42 +11,42 @@ use std::io::BufReader;
 #[derive(Debug)]
 pub struct FishArgs {
     show_timestamp: bool,
-    show_index: bool
+    show_index: bool,
 }
 
 #[derive(Debug)]
 struct FishCommand {
     time: i64,
-    cmd: String
+    cmd: String,
 }
 
 #[derive(Debug)]
 struct FishHistory {
-    history: Vec<FishCommand>
+    history: Vec<FishCommand>,
 }
 
 pub fn process_args(matches: ArgMatches) -> FishArgs {
     FishArgs {
-        show_timestamp : match matches.occurrences_of("t") {
+        show_timestamp: match matches.occurrences_of("t") {
             1 => true,
-            _ => false
+            _ => false,
         },
-        show_index : match matches.occurrences_of("n") {
+        show_index: match matches.occurrences_of("n") {
             1 => true,
-            _ => false
-        }
+            _ => false,
+        },
     }
 }
 
-fn clean (line: &str) -> String {
+fn clean(line: &str) -> String {
     if line.matches(":").count() > 1 {
         let newline = String::from(line);
         use self::regex::Regex;
         let re = Regex::new(r"^\- \w+: (.*)$").unwrap();
 
-        if re.is_match( newline.as_str() ) {
+        if re.is_match(newline.as_str()) {
             let cap = re.captures(newline.as_str()).unwrap();
-            let out = format!( "- cmd: \"{}\"", &cap[1]);
+            let out = format!("- cmd: \"{}\"", &cap[1]);
             return out;
         } else {
             panic!("Bad match!");
@@ -56,74 +56,69 @@ fn clean (line: &str) -> String {
     }
 }
 
-fn fish_history () -> FishHistory {
+fn fish_history() -> FishHistory {
     use self::yaml_rust::{YamlLoader, YamlEmitter, Yaml};
 
     let home_directory = env!("HOME");
     let fish_history_path = home_directory.to_owned() + "/.local/share/fish/fish_history";
     let mut file = match File::open(fish_history_path.to_string()) {
         Ok(v) => v,
-        Err(e) => panic!("Fish file not found")
+        Err(e) => panic!("Fish file not found"),
     };
 
     let mut contents = String::new();
     match file.read_to_string(&mut contents) {
         Ok(v) => (),
-        Err(e) => panic!("Unable to read file")
+        Err(e) => panic!("Unable to read file"),
     };
 
-    let mut sanitized : String = contents
-            .as_str()
-            .split("\n")
-            .collect::<Vec<&str>>()
-            .into_iter()
-            .map(|x| {
-                clean(x).replace("\"", "\\\"")
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
+    let mut sanitized: String = contents
+        .as_str()
+        .split("\n")
+        .collect::<Vec<&str>>()
+        .into_iter()
+        .map(|x| clean(x).replace("\"", "\\\""))
+        .collect::<Vec<String>>()
+        .join("\n");
 
     let parsed_history = match YamlLoader::load_from_str(sanitized.as_str()) {
         Ok(v) => v,
-        Err(e) => panic!("Unable to parse fish history")
+        Err(e) => panic!("Unable to parse fish history"),
     };
 
-    let mut out : Vec<FishCommand> = match parsed_history[0].as_vec() {
+    let mut out: Vec<FishCommand> = match parsed_history[0].as_vec() {
         Some(col) => {
-            col.into_iter().map(|item| {
-                FishCommand {
-                    time: item["when"].as_i64().unwrap(),
-                    cmd: String::from(item["cmd"].as_str().unwrap())
-                }
-            })
-            .collect()
-        },
-        None => panic!("Unable to parse fish history")
+            col.into_iter()
+                .map(|item| {
+                         FishCommand {
+                             time: item["when"].as_i64().unwrap(),
+                             cmd: String::from(item["cmd"].as_str().unwrap()),
+                         }
+                     })
+                .collect()
+        }
+        None => panic!("Unable to parse fish history"),
     };
 
-    return FishHistory {
-        history : out
-    }
+    return FishHistory { history: out };
 }
 
 pub fn lox_main(matches: ArgMatches) {
     use self::chrono::prelude::*;
-    
-    let args : FishArgs = process_args(matches);
-    let fish_history : FishHistory = fish_history();
+
+    let args: FishArgs = process_args(matches);
+    let fish_history: FishHistory = fish_history();
     let mut idx = 0;
-    
+
     for item in fish_history.history {
         let timestamp = match args.show_timestamp {
-            true => {
-                format!("{}\t", NaiveDateTime::from_timestamp(item.time, 0))
-            },
-            false => String::from("")
+            true => format!("{}\t", NaiveDateTime::from_timestamp(item.time, 0)),
+            false => String::from(""),
         };
 
         let index = match args.show_index {
             true => format!("{}\t", idx),
-            false => String::from("")
+            false => String::from(""),
         };
 
         println!("{}{}{}", index, timestamp, item.cmd);
