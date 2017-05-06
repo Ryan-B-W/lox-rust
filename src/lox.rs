@@ -1,6 +1,7 @@
 extern crate clap;
 extern crate yaml_rust;
 extern crate regex;
+extern crate chrono;
 
 use clap::ArgMatches;
 use std::fs::File;
@@ -106,15 +107,26 @@ fn fish_history () -> FishHistory {
 }
 
 pub fn lox_main(matches: ArgMatches) {
+    use self::chrono::prelude::*;
+    
     let args : FishArgs = process_args(matches);
     let fish_history : FishHistory = fish_history();
-
+    let mut idx = 0;
+    
     for item in fish_history.history {
         let timestamp = match args.show_timestamp {
-            true => "WORDS",
-            false => ""
+            true => {
+                format!("{}\t", NaiveDateTime::from_timestamp(item.time, 0))
+            },
+            false => String::from("")
         };
 
-        println!("{}{}", timestamp, item.cmd);
+        let index = match args.show_index {
+            true => format!("{}\t", idx),
+            false => String::from("")
+        };
+
+        println!("{}{}{}", index, timestamp, item.cmd);
+        idx += 1;
     }
 }
