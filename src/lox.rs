@@ -38,8 +38,6 @@ pub fn process_args(matches: ArgMatches) -> FishArgs {
 }
 
 fn clean (line: &str) -> String {
-    use std::borrow::Cow;
-
     if line.matches(":").count() > 1 {
         let newline = String::from(line);
         use self::regex::Regex;
