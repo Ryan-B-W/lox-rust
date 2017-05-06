@@ -88,15 +88,15 @@ fn fish_history () -> FishHistory {
         Err(e) => panic!("Unable to parse fish history")
     };
 
-    let mut out : Vec<FishCommand> = Vec::new();
-    &match parsed_history[0].as_vec() {
+    let mut out : Vec<FishCommand> = match parsed_history[0].as_vec() {
         Some(col) => {
-            for item in col {
-                out.push(FishCommand {
+            col.into_iter().map(|item| {
+                FishCommand {
                     time: item["when"].as_i64().unwrap(),
                     cmd: String::from(item["cmd"].as_str().unwrap())
-                });
-            }
+                }
+            })
+            .collect()
         },
         None => panic!("Unable to parse fish history")
     };
