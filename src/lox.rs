@@ -1,5 +1,6 @@
 extern crate clap;
 extern crate yaml_rust;
+extern crate regex;
 
 use clap::ArgMatches;
 use self::yaml_rust::{YamlLoader, YamlEmitter};
@@ -36,6 +37,26 @@ pub fn process_args(matches: ArgMatches) -> FishArgs {
     }
 }
 
+fn clean (line: &str) -> String {
+    use std::borrow::Cow;
+
+    if line.matches(":").count() > 1 {
+        let newline = String::from(line);
+        use self::regex::Regex;
+        let re = Regex::new(r"^\- \w+: (.*)$").unwrap();
+
+        if re.is_match( newline.as_str() ) {
+            let cap = re.captures(newline.as_str()).unwrap();
+            let out = format!( "- cmd: \"{}\"", &cap[1]);
+            return out;
+        } else {
+            panic!("Bad match!");
+        }
+    } else {
+        return line.to_string();
+    }
+}
+
 fn fish_history () -> FishHistory {
     let home_directory = env!("HOME");
     let fish_history_path = home_directory.to_owned() + "/.local/share/fish/fish_history";
@@ -50,7 +71,18 @@ fn fish_history () -> FishHistory {
         Err(e) => panic!("Unable to read file")
     };
 
-    let parsed_history = match YamlLoader::load_from_str(contents.as_str()) {
+    let mut sanitized : String = contents
+            .as_str()
+            .split("\n")
+            .collect::<Vec<&str>>()
+            .into_iter()
+            .map(|x| {
+                clean(x)
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+
+    let parsed_history = match YamlLoader::load_from_str(sanitized.as_str()) {
         Ok(v) => v,
         Err(e) => panic!("Unable to parse fish history")
     };

@@ -6,3 +6,4 @@ authors = ["davidnuon"]
 [dependencies]
 clap = "*"
 yaml-rust = "*"
+regex = "0.2"
