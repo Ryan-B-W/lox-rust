@@ -17,6 +17,5 @@ fn main() {
                         .help("Display index next to command"))
                     .get_matches();
 
-    println!("{:?}", matches);
-    println!("{:?}", lox::process_args(matches));
+    lox::lox_main(matches);
 }

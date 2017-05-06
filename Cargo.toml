@@ -5,3 +5,4 @@ authors = ["davidnuon"]
 
 [dependencies]
 clap = "*"
+yaml-rust = "*"
