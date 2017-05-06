@@ -3,7 +3,6 @@ extern crate yaml_rust;
 extern crate regex;
 
 use clap::ArgMatches;
-use self::yaml_rust::{YamlLoader, YamlEmitter};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -16,7 +15,8 @@ pub struct FishArgs {
 
 #[derive(Debug)]
 struct FishCommand {
-
+    time: i64,
+    cmd: String
 }
 
 #[derive(Debug)]
@@ -56,6 +56,8 @@ fn clean (line: &str) -> String {
 }
 
 fn fish_history () -> FishHistory {
+    use self::yaml_rust::{YamlLoader, YamlEmitter, Yaml};
+
     let home_directory = env!("HOME");
     let fish_history_path = home_directory.to_owned() + "/.local/share/fish/fish_history";
     let mut file = match File::open(fish_history_path.to_string()) {
@@ -85,12 +87,34 @@ fn fish_history () -> FishHistory {
         Err(e) => panic!("Unable to parse fish history")
     };
 
+    let mut out : Vec<FishCommand> = Vec::new();
+    &match parsed_history[0].as_vec() {
+        Some(col) => {
+            for item in col {
+                out.push(FishCommand {
+                    time: item["when"].as_i64().unwrap(),
+                    cmd: String::from(item["cmd"].as_str().unwrap())
+                });
+            }
+        },
+        None => panic!("Unable to parse fish history")
+    };
+
     return FishHistory {
-        history : vec![]
+        history : out
     }
 }
 
 pub fn lox_main(matches: ArgMatches) {
     let args : FishArgs = process_args(matches);
     let fish_history : FishHistory = fish_history();
+
+    for item in fish_history.history {
+        let timestamp = match args.show_timestamp {
+            true => "WORDS",
+            false => ""
+        };
+
+        println!("{}{}", timestamp, item.cmd);
+    }
 }
