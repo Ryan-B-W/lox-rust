@@ -78,7 +78,7 @@ fn fish_history () -> FishHistory {
             .collect::<Vec<&str>>()
             .into_iter()
             .map(|x| {
-                clean(x)
+                clean(x).replace("\"", "\\\"")
             })
             .collect::<Vec<String>>()
             .join("\n");
