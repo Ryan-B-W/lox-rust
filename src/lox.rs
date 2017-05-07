@@ -12,24 +12,31 @@ use std::io::prelude::*;
 use std::io::BufReader;
 
 #[derive(Debug)]
-pub struct FishArgs {
+enum Shell {
+    Fish,
+    Bash
+}
+
+#[derive(Debug)]
+pub struct LoxArgs {
     show_timestamp: bool,
     show_index: bool,
 }
 
 #[derive(Debug)]
-struct FishCommand {
+struct Command {
     time: i64,
     cmd: String,
 }
 
 #[derive(Debug)]
-struct FishHistory {
-    history: Vec<FishCommand>,
+struct ShellHistory {
+    history: Vec<Command>,
+    shell: Shell
 }
 
-pub fn process_args(matches: ArgMatches) -> FishArgs {
-    FishArgs {
+pub fn process_args(matches: ArgMatches) -> LoxArgs {
+    LoxArgs {
         show_timestamp: match matches.occurrences_of("t") {
             1 => true,
             _ => false,
@@ -77,7 +84,39 @@ fn get_parent_shell() -> String {
     }
 }
 
-fn fish_history() -> FishHistory {
+fn bash_history() -> ShellHistory {
+    let home_directory = env!("HOME");
+    let bash_history_path = home_directory.to_owned() + "/.bash_history";
+
+    let mut file = match File::open(bash_history_path.to_string()) {
+        Ok(v) => v,
+        Err(e) => panic!("Fish file not found"),
+    };
+
+    let mut contents = String::new();
+    match file.read_to_string(&mut contents) {
+        Ok(v) => (),
+        Err(e) => panic!("Unable to read file"),
+    };
+
+    return ShellHistory {
+        shell: Shell::Bash,
+        history: contents
+            .as_str()
+            .split("\n")
+            .collect::<Vec<&str>>()
+            .into_iter()
+            .map(|x| {
+                Command {
+                    cmd : String::from(x),
+                    time : -1
+                }
+            })
+            .collect()
+    }
+}
+
+fn fish_history() -> ShellHistory {
     use self::yaml_rust::{YamlLoader, YamlEmitter, Yaml};
 
     let home_directory = env!("HOME");
@@ -107,11 +146,11 @@ fn fish_history() -> FishHistory {
         Err(e) => panic!("Unable to parse fish history"),
     };
 
-    let mut out: Vec<FishCommand> = match parsed_history[0].as_vec() {
+    let mut out: Vec<Command> = match parsed_history[0].as_vec() {
         Some(col) => {
             col.into_iter()
                 .map(|item| {
-                         FishCommand {
+                         Command {
                              time: item["when"].as_i64().unwrap(),
                              cmd: String::from(item["cmd"].as_str().unwrap()),
                          }
@@ -121,20 +160,31 @@ fn fish_history() -> FishHistory {
         None => panic!("Unable to parse fish history"),
     };
 
-    return FishHistory { history: out };
+    return ShellHistory {
+        history: out,
+        shell: Shell::Fish
+    };
 }
 
 pub fn lox_main(matches: ArgMatches) {
     use self::chrono::prelude::*;
 
-    let args: FishArgs = process_args(matches);
-    let fish_history: FishHistory = fish_history();
+    let args: LoxArgs = process_args(matches);
+    let shell_history: ShellHistory = match get_parent_shell().as_ref() {
+        "fish" => fish_history(),
+        "bash" => bash_history(),
+        _ => panic!(format!("Unsupported shell: {}",  get_parent_shell()))
+    };
+
     let mut idx = 0;
 
-    for item in fish_history.history {
-        let timestamp = match args.show_timestamp {
-            true => format!("{}\t", NaiveDateTime::from_timestamp(item.time, 0)),
-            false => String::from(""),
+    for item in shell_history.history {
+        let timestamp = match shell_history.shell {
+          Shell::Fish => match args.show_timestamp {
+              true => format!("{}\t", NaiveDateTime::from_timestamp(item.time, 0)),
+              false => String::from(""),
+          },
+          _ => String::from("")
         };
 
         let index = match args.show_index {
