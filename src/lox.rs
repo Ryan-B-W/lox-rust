@@ -3,6 +3,9 @@ extern crate yaml_rust;
 extern crate regex;
 extern crate chrono;
 
+extern crate libc;
+extern crate pentry;
+
 use clap::ArgMatches;
 use std::fs::File;
 use std::io::prelude::*;
@@ -53,6 +56,24 @@ fn clean(line: &str) -> String {
         }
     } else {
         return line.to_string();
+    }
+}
+
+fn get_parent_shell() -> String {
+    let pid: i32;
+    unsafe {
+        pid = libc::getppid() as i32;
+    }
+
+    if let Ok(ps) = pentry::find(pid) {
+        let prog_option = ps.path().unwrap().split("/").collect::<Vec<&str>>();
+
+        let program_name = match prog_option.last() {
+            Some(&v) => return v.to_owned(),
+            _ => panic!("Unable to get shell name"),
+        };
+    } else {
+        panic!("Unable to find shell PID")
     }
 }
 
