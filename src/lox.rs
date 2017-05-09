@@ -1,5 +1,4 @@
 extern crate clap;
-extern crate yaml_rust;
 extern crate regex;
 extern crate chrono;
 
@@ -9,7 +8,6 @@ extern crate pentry;
 use clap::ArgMatches;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::BufReader;
 
 #[derive(Debug)]
 enum Shell {
@@ -48,24 +46,6 @@ pub fn process_args(matches: ArgMatches) -> LoxArgs {
     }
 }
 
-fn clean(line: &str) -> String {
-    if line.matches(":").count() > 1 {
-        let newline = String::from(line);
-        use self::regex::Regex;
-        let re = Regex::new(r"^\- \w+: (.*)$").unwrap();
-
-        if re.is_match(newline.as_str()) {
-            let cap = re.captures(newline.as_str()).unwrap();
-            let out = format!("- cmd: \"{}\"", &cap[1]);
-            return out;
-        } else {
-            panic!("Bad match!");
-        }
-    } else {
-        return line.to_string();
-    }
-}
-
 fn get_parent_shell() -> String {
     let pid: i32;
     unsafe {
@@ -75,7 +55,7 @@ fn get_parent_shell() -> String {
     if let Ok(ps) = pentry::find(pid) {
         let prog_option = ps.path().unwrap().split("/").collect::<Vec<&str>>();
 
-        let program_name = match prog_option.last() {
+        match prog_option.last() {
             Some(&v) => return v.to_owned(),
             _ => panic!("Unable to get shell name"),
         };
@@ -90,13 +70,13 @@ fn bash_history() -> ShellHistory {
 
     let mut file = match File::open(bash_history_path.to_string()) {
         Ok(v) => v,
-        Err(e) => panic!("Fish file not found"),
+        Err(_) => panic!("Fish file not found"),
     };
 
     let mut contents = String::new();
     match file.read_to_string(&mut contents) {
-        Ok(v) => (),
-        Err(e) => panic!("Unable to read file"),
+        Ok(_) => (),
+        Err(_) => panic!("Unable to read file"),
     };
 
     return ShellHistory {
@@ -129,19 +109,16 @@ fn parse_fish_history(lines : Vec<&str>) -> Vec<Command> {
     let mut idx : usize = 0;
     let num_lines : usize = lines.len();
 
-    let mut last_command : String = String::from("");
-    let mut last_time : i64 = 0;
+    let mut last_command : String = String::from("");;
     let mut current_history : Vec<Command> = Vec::new();
 
     loop {
         if idx == num_lines - 1{
-            println!("done");
             break;
         }
 
         if lines[idx + 1].len() == 0 {
             break;
-            println!("Stop at empty line");
         }
 
         println!("{:?}\t{}", state, lines[idx]);
@@ -159,12 +136,12 @@ fn parse_fish_history(lines : Vec<&str>) -> Vec<Command> {
                 idx += 1;
                 let when_position = lines[idx].find("when:");
                 match when_position {
-                    Some(v) => state = State::TIME,
+                    Some(_) => state = State::TIME,
                     None => panic!(format!("Unexpected line: {}", lines[idx]))
                 }
             },
             State::TIME => {
-                last_time = lines[idx]
+                let time = lines[idx]
                                 .replace("when:", "")
                                 .trim()
                                 .parse::<i64>()
@@ -178,7 +155,7 @@ fn parse_fish_history(lines : Vec<&str>) -> Vec<Command> {
                     (false, true) => {
                         current_history.push(Command {
                             cmd: last_command.to_string(),
-                            time: last_time
+                            time: time
                         });
                         state = State::COMMAND;
                     },
@@ -203,22 +180,20 @@ fn parse_fish_history(lines : Vec<&str>) -> Vec<Command> {
 }
 
 fn fish_history() -> ShellHistory {
-    use self::yaml_rust::{YamlLoader, YamlEmitter, Yaml};
-
     let home_directory = env!("HOME");
     let fish_history_path = home_directory.to_owned() + "/.local/share/fish/fish_history";
     let mut file = match File::open(fish_history_path.to_string()) {
         Ok(v) => v,
-        Err(e) => panic!("Fish file not found"),
+        Err(_) => panic!("Fish file not found"),
     };
 
     let mut contents = String::new();
     match file.read_to_string(&mut contents) {
-        Ok(v) => (),
-        Err(e) => panic!("Unable to read file"),
+        Ok(_) => (),
+        Err(_) => panic!("Unable to read file"),
     };
 
-    let mut lines = contents
+    let lines = contents
         .as_str()
         .split("\n")
         .collect::<Vec<&str>>();

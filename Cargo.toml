@@ -6,7 +6,6 @@ authors = ["davidnuon"]
 [dependencies]
 clap = "*"
 chrono = "*"
-yaml-rust = "*"
 regex = "0.2"
 libc = "*"
 pentry = "*"
