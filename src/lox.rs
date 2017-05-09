@@ -8,8 +8,7 @@ extern crate pentry;
 use clap::ArgMatches;
 
 use lib::Shell;
-use fish;
-use bash;
+use shells;
 
 #[derive(Debug)]
 pub struct LoxArgs {
@@ -53,8 +52,8 @@ pub fn lox_main(matches: ArgMatches) {
 
     let args: LoxArgs = process_args(matches);
     let shell_history = match get_parent_shell().as_ref() {
-        "fish" => fish::history(),
-        "bash" => bash::history(),
+        "fish" => shells::fish::history(),
+        "bash" => shells::bash::history(),
         _ => panic!(format!("Unsupported shell: {}",  get_parent_shell()))
     };
 

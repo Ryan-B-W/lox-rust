@@ -1,8 +1,7 @@
 extern crate clap;
 use clap::{Arg, App};
 
-mod fish;
-mod bash;
+mod shells;
 mod lox;
 mod lib;
 
