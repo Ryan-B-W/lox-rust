@@ -116,6 +116,92 @@ fn bash_history() -> ShellHistory {
     }
 }
 
+fn parse_fish_history(lines : Vec<&str>) -> Vec<Command> {
+    #[derive(Debug)]
+    enum State {
+        INIT,
+        COMMAND,
+        TIME,
+        PATH
+    };
+
+    let mut state : State = State::INIT;
+    let mut idx : usize = 0;
+    let num_lines : usize = lines.len();
+
+    let mut last_command : String = String::from("");
+    let mut last_time : i64 = 0;
+    let mut current_history : Vec<Command> = Vec::new();
+
+    loop {
+        if idx == num_lines - 1{
+            println!("done");
+            break;
+        }
+
+        if lines[idx + 1].len() == 0 {
+            break;
+            println!("Stop at empty line");
+        }
+
+        println!("{:?}\t{}", state, lines[idx]);
+
+        match state {
+            State::INIT => {
+                state = State::COMMAND
+            },
+            State::COMMAND => {
+                last_command = lines[idx]
+                                .replace("- cmd:", "")
+                                .trim()
+                                .to_string();
+
+                idx += 1;
+                let when_position = lines[idx].find("when:");
+                match when_position {
+                    Some(v) => state = State::TIME,
+                    None => panic!(format!("Unexpected line: {}", lines[idx]))
+                }
+            },
+            State::TIME => {
+                last_time = lines[idx]
+                                .replace("when:", "")
+                                .trim()
+                                .parse::<i64>()
+                                .unwrap();
+
+                idx += 1;
+                let path_position = lines[idx].find("paths:").is_some();
+                let cmd_position = lines[idx].find("- cmd:").is_some();
+                match (path_position, cmd_position) {
+                    (true, false) => state = State::PATH,
+                    (false, true) => {
+                        current_history.push(Command {
+                            cmd: last_command.to_string(),
+                            time: last_time
+                        });
+                        state = State::COMMAND;
+                    },
+                    (_, _) => panic!("@TIME: Bad parse state: {:?} {:?}", lines[idx], state)
+                }
+            },
+            State::PATH => {
+                idx += 1;
+                let path_position = lines[idx].find("paths:").is_some();
+                let cmd_position = lines[idx].find("- cmd:").is_some();
+                match (path_position, cmd_position) {
+                    (false, false) => state = State::PATH,
+                    (false,  true) => state = State::COMMAND,
+                    (true,  false) => state = State::PATH,
+                    (true,   true) => panic!("@PATH: Bad parse state: {} {:?}", lines[idx], state)
+                }
+            }
+        };
+    }
+
+    return current_history;
+}
+
 fn fish_history() -> ShellHistory {
     use self::yaml_rust::{YamlLoader, YamlEmitter, Yaml};
 
@@ -132,36 +218,13 @@ fn fish_history() -> ShellHistory {
         Err(e) => panic!("Unable to read file"),
     };
 
-    let mut sanitized: String = contents
+    let mut lines = contents
         .as_str()
         .split("\n")
-        .collect::<Vec<&str>>()
-        .into_iter()
-        .map(|x| clean(x).replace("\"", "\\\""))
-        .collect::<Vec<String>>()
-        .join("\n");
-
-    let parsed_history = match YamlLoader::load_from_str(sanitized.as_str()) {
-        Ok(v) => v,
-        Err(e) => panic!("Unable to parse fish history"),
-    };
-
-    let mut out: Vec<Command> = match parsed_history[0].as_vec() {
-        Some(col) => {
-            col.into_iter()
-                .map(|item| {
-                         Command {
-                             time: item["when"].as_i64().unwrap(),
-                             cmd: String::from(item["cmd"].as_str().unwrap()),
-                         }
-                     })
-                .collect()
-        }
-        None => panic!("Unable to parse fish history"),
-    };
+        .collect::<Vec<&str>>();
 
     return ShellHistory {
-        history: out,
+        history: parse_fish_history(lines),
         shell: Shell::Fish
     };
 }
