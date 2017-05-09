@@ -1,7 +1,10 @@
 extern crate clap;
 use clap::{Arg, App};
 
+mod fish;
+mod bash;
 mod lox;
+mod lib;
 
 fn main() {
     const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
