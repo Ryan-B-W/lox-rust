@@ -8,4 +8,7 @@ clap = "*"
 chrono = "*"
 regex = "0.2"
 libc = "*"
+
+[target.x86_64-unknown-linux-gnu.dependencies]
+[target.i686-unknown-linux-gnu.dependencies]
 pentry = "*"
