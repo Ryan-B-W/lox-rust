@@ -29,7 +29,17 @@ pub enum Shell {
 
 #[cfg(target_os = "macos")]
 pub fn get_parent_shell() -> String {
-    String::from("fish")
+    extern crate libproc;
+
+    let pid: i32;
+    unsafe {
+        pid = libc::getppid() as i32;
+    }
+
+    match libproc::libproc::proc_pid::name(pid) {
+        Ok(v) => v,
+        Err(_) => panic!("Unable to get parent process name")
+    }
 }
 
 #[cfg(target_os = "linux")]
