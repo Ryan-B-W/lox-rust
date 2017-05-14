@@ -3,12 +3,12 @@ extern crate regex;
 extern crate chrono;
 
 extern crate libc;
-extern crate pentry;
 
 use clap::ArgMatches;
 
-use lib::Shell;
-use shells;
+use lib::{Shell, get_parent_shell};
+use fish;
+use bash;
 
 #[derive(Debug)]
 pub struct LoxArgs {
@@ -26,24 +26,6 @@ pub fn process_args(matches: ArgMatches) -> LoxArgs {
             1 => true,
             _ => false,
         },
-    }
-}
-
-fn get_parent_shell() -> String {
-    let pid: i32;
-    unsafe {
-        pid = libc::getppid() as i32;
-    }
-
-    if let Ok(ps) = pentry::find(pid) {
-        let prog_option = ps.path().unwrap().split("/").collect::<Vec<&str>>();
-
-        match prog_option.last() {
-            Some(&v) => return v.to_owned(),
-            _ => panic!("Unable to get shell name"),
-        };
-    } else {
-        panic!("Unable to find shell PID")
     }
 }
 
