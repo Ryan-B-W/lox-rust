@@ -7,8 +7,7 @@ extern crate libc;
 use clap::ArgMatches;
 
 use lib::{Shell, get_parent_shell};
-use fish;
-use bash;
+use shells;
 
 #[derive(Debug)]
 pub struct LoxArgs {
